@@ -2,7 +2,6 @@ package goten
 
 import (
 	"github.com/christopherzimmerman/goten/internal"
-	"reflect"
 )
 
 type Tensor[T TensorElement] struct {
@@ -148,19 +147,19 @@ func (t *Tensor[T]) SliceV(args ...interface{}) (*Tensor[T], error) {
 }
 
 func (t *Tensor[T]) Set(args []interface{}, value *Tensor[T]) error {
-	if !reflect.DeepEqual(value.shape, t.shape) {
-		view, err := value.Broadcast(t.shape)
+	a, err := t.Slice(args)
+
+	if err != nil {
+		return err
+	}
+
+	if !internal.SliceEqual(a.shape, value.shape) {
+		view, err := value.Broadcast(a.shape)
 		value = view
 
 		if err != nil {
 			return err
 		}
-	}
-
-	a, err := t.Slice(args)
-
-	if err != nil {
-		return err
 	}
 
 	aIter := a.Iter()

@@ -18,10 +18,6 @@ func (c *CPU[T]) AllocateFromShape(shape []int) {
 	}
 
 	c.data = make([]T, internal.SliceProduct(shape))
-	for i := 0; i < internal.SliceProduct(shape); i++ {
-		c.data[i] = T(i)
-	}
-
 	c.initialized = true
 }
 
