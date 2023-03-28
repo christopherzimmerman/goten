@@ -1,6 +1,9 @@
 package goten
 
-import "github.com/christopherzimmerman/goten/internal"
+import (
+	"github.com/christopherzimmerman/goten/internal"
+	"reflect"
+)
 
 type Tensor[T TensorElement] struct {
 	data    Storage[T]
@@ -141,6 +144,32 @@ func (t *Tensor[T]) Slice(args []interface{}) (*Tensor[T], error) {
 }
 
 func (t *Tensor[T]) SliceV(args ...interface{}) (*Tensor[T], error) {
-	offset, newShape, newStrides, err := offsetForIndex(t.shape, t.strides, t.offset, args)
-	return NewFromComponents(t.data, newShape, newStrides, offset, t.flags), err
+	return t.Slice(args)
+}
+
+func (t *Tensor[T]) Set(args []interface{}, value *Tensor[T]) error {
+	if !reflect.DeepEqual(value.shape, t.shape) {
+		view, err := value.Broadcast(t.shape)
+		value = view
+
+		if err != nil {
+			return err
+		}
+	}
+
+	a, err := t.Slice(args)
+
+	if err != nil {
+		return err
+	}
+
+	aIter := a.Iter()
+	bIter := value.Iter()
+
+	for i := 0; i < a.size; i++ {
+		aIter.data.Set(aIter.iterPosition, bIter.Next())
+		aIter.Next()
+	}
+
+	return nil
 }
