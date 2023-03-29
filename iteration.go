@@ -74,26 +74,26 @@ func (t *Tensor[T]) Iter() Iterator[T] {
 	}
 }
 
-func Map[T TensorElement, V TensorElement](t *Tensor[T], fn func(V) V) *Tensor[V] {
-	result := New[V](t.shape)
+func Map[T TensorElement](t *Tensor[T], fn func(T) T) *Tensor[T] {
+	result := New[T](t.shape)
 
 	iter := t.Iter()
 	resultIter := result.Iter()
 
 	for i := 0; i < result.size; i++ {
-		resultIter.data.Set(resultIter.iterPosition, fn(V(iter.Next())))
+		resultIter.data.Set(resultIter.iterPosition, fn(iter.Next()))
 		resultIter.Next()
 	}
 
 	return result
 }
 
-func Assign[T TensorElement, V TensorElement](t *Tensor[T], fn func(V) V) {
+func Assign[T TensorElement](t *Tensor[T], fn func(T) T) {
 	iter := t.Iter()
 
 	for i := 0; i < t.size; i++ {
 		iterPos := iter.iterPosition
-		iter.data.Set(iterPos, T(fn(V(iter.Next()))))
+		iter.data.Set(iterPos, fn(iter.Next()))
 	}
 }
 

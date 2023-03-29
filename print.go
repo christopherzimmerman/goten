@@ -49,6 +49,22 @@ func maxWidth[T TensorElement](iterator Iterator[T]) int {
 	return mx
 }
 
+func leadingTrailing[T TensorElement](a *Tensor[T], edgeItems int, index []interface{}) (*Tensor[T], error) {
+	axis := len(index)
+
+	if axis == a.Rank() {
+		return a.Slice(index)
+	}
+
+	if a.shape[axis] > 2*edgeItems {
+		sliceOne, _ := leadingTrailing(a, edgeItems, append(index, R(0, edgeItems)))
+		sliceTwo, _ := leadingTrailing(a, edgeItems, append(index, R(-1*edgeItems, a.shape[axis])))
+		return Concat[T]([]*Tensor[T]{sliceOne, sliceTwo}, axis)
+	} else {
+		return leadingTrailing(a, edgeItems, append(index, R(0, a.shape[axis])))
+	}
+}
+
 func extendLine(s string, line string, word string, lineWidth int, nextLinePrefix string) (string, string) {
 	needsWrap := len(line)+len(word) > lineWidth
 
@@ -74,8 +90,15 @@ func recursor[T TensorElement](a *Tensor[T], index []interface{}, hangingIndent 
 	nextWidth := currentWidth - 1
 
 	axisLength := a.Shape()[axis]
+	showSummary := (len(summaryInsert) > 0) && (2*edgeItems < axisLength)
+
 	leadingItems := 0
 	trailingItems := axisLength
+
+	if showSummary {
+		leadingItems = edgeItems
+		trailingItems = edgeItems
+	}
 
 	s := ""
 
@@ -86,6 +109,11 @@ func recursor[T TensorElement](a *Tensor[T], index []interface{}, hangingIndent 
 		for i := 0; i < leadingItems; i++ {
 			word := recursor(a, append(index, i), nextHangingIndent, nextWidth, summaryInsert, edgeItems, separator, pad)
 			s, line = extendLine(s, line, word, elemWidth, hangingIndent)
+			line += separator
+		}
+
+		if showSummary {
+			s, line = extendLine(s, line, summaryInsert, elemWidth, hangingIndent)
 			line += separator
 		}
 
@@ -106,6 +134,10 @@ func recursor[T TensorElement](a *Tensor[T], index []interface{}, hangingIndent 
 			s += hangingIndent + nested + lineSep
 		}
 
+		if showSummary {
+			s += hangingIndent + summaryInsert + "\n"
+		}
+
 		for i := trailingItems; i >= 2; i-- {
 			nested := recursor(a, append(index, -i), nextHangingIndent, nextWidth, summaryInsert, edgeItems, separator, pad)
 			s += hangingIndent + nested + lineSep
@@ -123,6 +155,12 @@ func formatArray[T TensorElement](a *Tensor[T], lineWidth int, nextLinePrefix st
 }
 
 func (t *Tensor[T]) String() string {
-	pad := maxWidth(t.Iter())
-	return formatArray(t, 75, " ", ",", 3, "...", pad)
+	data := t
+	summaryInsert := ""
+	if t.size > 1000 {
+		data, _ = leadingTrailing(t, 3, []interface{}{})
+		summaryInsert = "..."
+	}
+	pad := maxWidth(data.Iter())
+	return formatArray(t, 75, " ", ", ", 3, summaryInsert, pad)
 }
